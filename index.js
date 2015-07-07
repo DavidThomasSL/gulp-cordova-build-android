@@ -18,7 +18,7 @@ var path = require('path'),
     cordova = cordovaLib.raw;
 
 // export the module
-module.exports = function(options) {
+module.exports = function(options, buildRelease) {
 
     options = options || {};
 
@@ -30,7 +30,8 @@ module.exports = function(options) {
     }, function(cb) {
         var self = this,
             androidPath = path.join(cordovaLib.findProjectRoot(), 'platforms', 'android'),
-            release = options.storeFile && options.keyAlias;
+            sign = options.storeFile && options.keyAlias,
+            release = buildRelease || sign;
 
         Q.fcall(function() {
             return fs.existsSync(androidPath);
@@ -40,10 +41,10 @@ module.exports = function(options) {
                 return cordova.platforms('add', 'android');
             }
         }).then(function() {
-            if(release) {
+            if(sign) {
                 var data = [];
 
-                // Iterate over all the options and add them to the array that will be written to the properties file
+                // Iterate over all the signing options and add them to the array that will be written to the properties file
                 for(var key in options) {
                     data.push(key + '=' + options[key]);
                 }
@@ -66,16 +67,19 @@ module.exports = function(options) {
                 cwd = process.env.PWD,
                 contents;
 
-            if(release) {
-                // Define the release variables
+            if(sign) {
+                // Define the signed release variables
                 path = path.join(base, 'android-release.apk');
-                contents = fs.readFileSync(path);
+            } else if (release) {
+                // Define the unsigned release variables
+                path = path.join(base, 'android-release-unsigned.apk');
             }
             else {
                 // Define the debug variables
                 path = path.join(base, 'android-debug.apk');
-                contents = fs.readFileSync(path);
             }
+            
+            contents = fs.readFileSync(path);
 
             // Make sure the apk is passed to the next step
             self.push(new gutil.File({
